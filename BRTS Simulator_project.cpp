@@ -14,7 +14,43 @@ using namespace std;
 #define DRIVER_SALARY 10000
 
 class BRTSExceptions {
-
+int error_codes;
+string error_message;
+public:
+    BRTSExceptions(int e,string s) {
+        error_codes=e;
+        error_message=s;
+    }
+    BRTSExceptions(int e) {
+        error_codes=e;
+        error_message="";
+    }
+    void show_error_message() {
+        if(error_message!="") {
+            cout << "Error !!" <<endl;
+            cout << "Message: " << error_message <<endl;
+        }
+    }
+    void show_error() {
+        cout << "Error Code "<< error_codes <<endl;
+        switch(error_codes) {
+        case 101:
+            cout << "Reason: Station is Required Before Adding BuS" <<endl;
+            break;
+        case 202:
+            cout << "Reason: Invalid Value" <<endl;
+            break;
+        case 303:
+            cout << "Reason: Minimum Requirements Failed" << endl;
+            break;
+        case 404:
+            cout << "Reason: Empty Value" << endl;
+            break;
+        default:
+            cout << "Reason: Unknown" <<endl;
+            break;
+        }
+    }
 };
 
 class Person {
@@ -94,7 +130,7 @@ public:
     }
     int CalcuateFare(float DestinationKM) {
         int BasePrice=6;
-        int Calc=DestinationKM/1.5;
+        int Calc=abs(DestinationKM-DistanceFromStart);
         int Price=BasePrice + (Calc-1)*BasePrice;
         return Price;
     }
@@ -188,32 +224,6 @@ public:
     }
 };
 
-/*
-class Date {
-    bool Verify(int DD, int MM, int YYYY) {
-        if(DD>31||DD<0) return false;
-        if(MM>12||DD<0) return false;
-        if(YYYY<0) return false;
-        return true;
-    }
-protected:
-    int DD;
-    int MM;
-    int YYYY;
-public:
-    Date(int DD,int MM,int YYYY) {
-        if(!Verify(DD,MM,YYYY)) {
-            //Throw
-        } else {
-            this->DD=DD;
-            this->MM=MM;
-            this->YYYY=YYYY;
-        }
-    }
-
-};
-*/
-
 class BusPass:public TravelBy {
     int PassId;
 public:
@@ -226,7 +236,7 @@ public:
     bool VerifyTravel(BusStation *s,BusStation *d) {
         if(s->getName()==SourceLocation->getName()&&d->getName()==Destination->getName()) return true;
         if(d->getName()==SourceLocation->getName()&&s->getName()==Destination->getName()) return true;
-        return true;
+        return false;
     }
     void printBusPass() {
         cout << "Bus Pass ID: " << PassId << endl;
@@ -237,34 +247,17 @@ public:
 };
 
 class Ticket:public TravelBy {
-    UPI *pay1;
-    Cash *pay2;
 public:
     Ticket() {}
     Ticket(BusStation *SourceLocation,BusStation *Destination,int fare):TravelBy(SourceLocation,Destination,fare) {
-        cout << "Select Mode of Payment" << endl;
-        cout << "1. UPI" << endl;
-        cout << "2. Cash" << endl;
-        int ch;
-        cin >> ch;
-        if(ch==1) {
-            string upiid;
-            cout << "Enter UPI id:" << endl;
-            cin >> upiid;
-            //pay1=new UPI(upiid,fare);
-            //pay1->Pay();
-        } else {
-            //pay2=new Cash(fare);
-            //pay2->Pay();
-        }
     }
 };
 
 class Passenger: public Person {
-bool HasBusPass;
-int pid;
-int money;
 public:
+    bool HasBusPass;
+    int pid;
+    int money;
     BusStation CurrentLocation;
     BusPass pass;
     Ticket ticket;
@@ -277,11 +270,10 @@ public:
     }
     void BuyBussPass(BusPass bp) {
         if(HasBusPass==false) {
-            if(money>=200) {
-                HasBusPass=true;
-                money=money-200;
-                pass=bp;
-            }
+            HasBusPass=true;
+            pass=bp;
+        } else {
+            throw BRTSExceptions(202,"Person can Max Buy 1 Bus Pass");
         }
     }
     bool DeductMoney(int f) {
@@ -295,7 +287,7 @@ public:
         return HasBusPass;
     }
     void BuyTicket(Ticket tk) {
-        int fare=tk.getFare();
+        ticket=tk;
     }
     void printp() {
         cout << "Person ID: " << pid << endl;
@@ -305,6 +297,9 @@ public:
     }
     string printname() {
         return Name;
+    }
+    int getmoney() {
+        return money;
     }
     int getId() {
         return pid;
@@ -316,6 +311,7 @@ void Payments::Pay(Passenger *p) {
     if(p->DeductMoney(fare)) {
         ispaid=true;
     }
+    cout << "Money: " << p->getmoney() << endl;
 }
 
 class BRTS {
@@ -342,6 +338,9 @@ public:
         Location=location;
     }
     void addBus() {
+        if(TotalStations==0) {
+            throw BRTSExceptions(101);
+        }
         Bus b=createBus();
         Driver e=HireDriver();
         b.AddDriver(e);
@@ -377,8 +376,7 @@ public:
         cout << "Enter Adhar Card:";
         cin >> card;
         Driver e(TotalStations+TotalVehicles+1,name,age,card);
-        emps1[TotalStations]=e;
-        TotalStations++;
+        emps1[TotalVehicles]=e;
         return e;
     }
     Cashier HireCashier() {
@@ -391,8 +389,7 @@ public:
         cout << "Enter Adhar Card:";
         cin >> card;
         Cashier e(TotalStations+TotalVehicles+1,name,age,card);
-        emps2[TotalVehicles]=e;
-        TotalVehicles++;
+        emps2[TotalStations]=e;
         return e;
     }
     void reset() {
@@ -400,6 +397,7 @@ public:
         TotalVehicles=0;
     }
     void printBuses() {
+        if(TotalVehicles==0) throw BRTSExceptions(404);
         cout << "============" << endl;
         cout << "BRTS BUSES" << endl;
         cout << "============" << endl;
@@ -408,12 +406,14 @@ public:
         }
     }
     void printStations() {
+        if(TotalStations==0) throw BRTSExceptions(404);
         cout << "BRTS STATION" << endl;
         for(int i=0;i<TotalStations;i++) {
             cout << stations[i].getName() << endl;
         }
     }
     void printEmplyee() {
+        if(TotalStations+TotalVehicles==0) throw BRTSExceptions(404);
         cout << "BRTS EMPLOYEES" << endl;
         for(int i=0;i<TotalStations;i++) {
             stations[i].cashier.PrintEmployee();
@@ -430,6 +430,7 @@ public:
         cin >> vh;
         cout << "Enter BUS Type(200A/200B)" << endl;
         cin >> bt;
+        if(bt!="200A"&&bt!="200B") throw BRTSExceptions(202);
         int loc=rand()%TotalStations;
         Bus b1(vh,BUS_CAPACITY,bt,stations[loc]);
         return b1;
@@ -485,6 +486,7 @@ public:
         TotalPassengers++;
     }
     void printPass() {
+        if(TotalPassengers==0) throw BRTSExceptions(404);
         for(int i=0;i<TotalPassengers;i++) {
             passengers[i].printp();
             if(passengers[i].hasPass()) {
@@ -496,7 +498,34 @@ public:
             cout << endl;
         }
     }
+    bool Paymentsoption(Passenger *p,int fare) {
+        cout << "Payment Options" << endl;
+        cout << "1. UPI" << endl;
+        cout << "2. Cash" << endl;
+        int ch1;
+        cin >> ch1;
+        if(ch1==1) {
+            string upi;
+            cout << "Enter UPI ID" << endl;
+            cin >> upi;
+            UPI pay(upi,fare);
+            pay.Pay(p);
+            if(!pay.isPaid()) {
+                cout << "Payment Failed !!" << endl;
+                return false;
+            }
+        } else if(ch1 ==2) {
+            Cash pay(fare);
+            pay.Pay(p);
+            if(!pay.isPaid()) {
+                cout << "Payment Failed !!" << endl;
+                return false;
+            }
+        }
+        return true;
+    }
     void buyBuspass() {
+        if(TotalPassengers==0||TotalStations<=2) throw BRTSExceptions(303);
         int id,c;
         cout << "Enter ID:" << endl;
         cin >> id;
@@ -518,28 +547,8 @@ public:
         cout << "Do You Want to Buy Bus Pass for Rs 200? [Y/N]" << endl;
         cin >> ch;
         if(ch=='N'||ch=='n') return;
-        cout << "Payment Options" << endl;
-        cout << "1. UPI" << endl;
-        cout << "2. Cash" << endl;
-        int ch1;
-        cin >> ch1;
-        if(ch1==1) {
-            string upi;
-            cout << "Enter UPI ID" << endl;
-            cin >> upi;
-            UPI pay(upi,200);
-            pay.Pay(&passengers[c]);
-            if(!pay.isPaid()) {
-                cout << "Payment Failed !!" << endl;
-                return;
-            }
-        } else if(ch1 ==2) {
-            Cash pay(200);
-            pay.Pay(&passengers[c]);
-            if(!pay.isPaid()) {
-                cout << "Payment Failed !!" << endl;
-                return;
-            }
+        if(!Paymentsoption(&passengers[c],200)) {
+            return;
         }
         BusPass B(id,&stations[c1-1],&stations[c2-1]);
         passengers[c].BuyBussPass(B);
@@ -568,6 +577,7 @@ public:
     }
     void simulatePerson() {
         int id,c;
+        if(TotalVehicles<1||TotalPassengers==0||TotalStations<=2) throw BRTSExceptions(303);
         cout << "Enter ID:" << endl;
         cin >> id;
         for(int i=0;i<TotalPassengers;i++) {
@@ -582,6 +592,7 @@ public:
         string name=p->printname();
         cout << "Passenger: " << name << endl;
         cout << "Location: " << p->CurrentLocation.getName() << endl;
+        cout << "Money: " << p->getmoney() << endl;
         cout << "=============" << endl;
         cout << "1. Travel" << endl;
         cout << "2. Exit" << endl;
@@ -596,42 +607,152 @@ public:
             int c1;
             cout << "Enter Destination:";
             cin >> c1;
-            cout << "Fare is " << p->CurrentLocation.CalcuateFare(abs(stations[c1].Distance()-p->CurrentLocation.Distance()));
-
+            int fare=p->CurrentLocation.CalcuateFare(stations[c1-1].Distance());
+            cout << "Fare is " << fare << endl;
+            traveloptions(p,&stations[c1-1],fare);
+        } else {
+            throw 0;
+        }
+    }
+    void traveloptions(Passenger *p,BusStation *bs,int fare) {
+        cout << "Enter Option:" << endl;
+        cout << "1. Use Bus Pass" << endl;
+        cout << "2. Buy Ticket" << endl;
+        cout << "Enter choice:";
+        int ch;
+        cin >> ch;
+        if(ch==1) {
+            if(p->hasPass()&&p->pass.VerifyTravel(&p->CurrentLocation,bs)) {
+                movetostation(p,bs);
+            } else if(!p->hasPass()) {
+                cout << "You Doesn't Bus Pass" << endl;
+                traveloptions(p,bs,fare);
+            } else {
+                cout << "Your Bus Pass is not valid for current Source and Destination" << endl;
+                traveloptions(p,bs,fare);
+            }
+        } else if(ch==2) {
+            Ticket tk(&p->CurrentLocation,bs,fare);
+            if(!Paymentsoption(p,fare)) {
+                cout << "You broke!!" << endl;
+                cout << "Simulation Over!!" << endl;
+                throw 1;
+            }
+            p->BuyTicket(tk);
+            movetostation(p,bs);
+        }
+    }
+    bool displayupcomingbus(int index) {
+        bool busatst=false;
+        cout << "==============" << endl;
+        cout << "UPCOMING BUSES" << endl;
+        cout << "==============" << endl;
+        for(int i=0;i<TotalVehicles;i++) {
+            int busin=getStationIndex(Chigris[i].current_station);
+            if(busin==index) {
+                busatst=true;
+            } else if(index-busin<0&&index-busin>-3&&Chigris[i].bustype=="200B") {
+                Chigris[i].DisplayBus();
+                cout << "-----------" << endl;
+            } else if(index-busin>0&&index-busin<3&&Chigris[i].bustype=="200A") {
+                Chigris[i].DisplayBus();
+                cout << "-----------" << endl;
+            }
+        }
+        return busatst;
+    }
+    int findbusat(int bs[],int index) {
+        int r=0;
+        for(int i=0;i<TotalVehicles;i++) {
+            if(Chigris[i].current_station.getName()==stations[index].getName()) {
+                cout << r+1 << ") ";
+                Chigris[i].DisplayBus();
+                cout << "-----------" << endl;
+                bs[r]=i;
+                r++;
+            }
+        }
+        return r;
+    }
+    void travelbus(Bus *Ch,Passenger *p,BusStation *bs) {
+        BusStation *cl=&p->CurrentLocation;
+        bool isleft=false;
+        movebus();
+        while(1) {
+            p->CurrentLocation=Ch->current_station;
+            cout << "BUS Location: " << Ch->current_station.getName() << endl;
+            cout << "Choose Option" << endl;
+            cout << "1. Leave Bus" << endl;
+            cout << "2. Continue in Bus" << endl;
+            int ch;
+            cin >> ch;
+            if(ch==1) {
+                isleft=true;
+                movebus();
+                break;
+            } else if(ch==2) {
+                //Do nothing
+            }
+            int index=getStationIndex(Ch->current_station);
+            if(index==0&&Ch->bustype=="200B") {
+                break;
+            } else if(index==TotalStations-1&&Ch->bustype=="200A") {
+                break;
+            }
+            movebus();
+        }
+        if(!isleft) {
+            cout << "BUS Reached Last Stop !!" << endl;
+            cout << "You Were Forced to leave !!" << endl;
+        }
+        if(checkfine(&p->CurrentLocation,bs)) {
+            cout << "You have been Fined for Invalid ticket for current station of Rs 200"<<endl;
+            if(!Paymentsoption(p,200)) {
+                cout << "You broke!!" << endl;
+                cout << "Simulation Over!!" << endl;
+                throw 1;
+            }
+        }
+        simulate(p);
+    }
+    bool checkfine(BusStation *b1,BusStation *b2) {
+        if(b1->getName()!=b2->getName()) return true;
+        return false;
+    }
+    void movetostation(Passenger *p,BusStation *bs) {
+        while(1) {
+            movebus();
+            int index=getStationIndex(p->CurrentLocation);
+            bool r=displayupcomingbus(index);
+            cout << "========================" << endl;
+            cout << "BUSES AT CURRENT STATION" << endl;
+            cout << "========================" << endl;
+            int busindex[TotalVehicles];
+            if(r) {
+                int tbus=findbusat(busindex,index);
+            } else {
+                cout << "None" << endl;
+            }
+            cout << "Select Options You are inside Station" << endl;
+            if(r) {
+                cout << "1. Take a Bus" << endl;
+                cout << "2. Wait" << endl;
+                cout << "3. Exit" << endl;
+                int ch,ch1;
+                cin >> ch;
+                if(ch==1) {
+                    cout << "Enter Bus to take:";
+                    cin >> ch1;
+                    travelbus(&Chigris[busindex[ch1-1]],p,bs);
+                } else if(ch==2) {
+                    continue;
+                } else {
+                    return;
+                }
+            }
         }
     }
 };
-
-/*
-class TravelSimulation: public BRTS {
-    BusStation *SourceLocation;
-    BusStation *Destination;
-    int fare;
-public:
-    TravelSimulation(BusStation *Source,BusStation *Dest,bool HasBusPass) {
-        SourceLocation=Source;
-        Destination=Destination;
-        //this->HasBusPass=HasBusPass;
-        //if(HasBusPass) {
-            //pass=new BusPass;
-        //} else {
-            //ticket=new Ticket(SourceLocation,Destination,SourceLocation->CalcuateFare(Destination->Distance()));
-        //}
-    }
-    int AddPass(string name,int age,BusPass pass) {
-        this->Name=name;
-        this->age=age;
-        if(!pass.Verify(name,age)) {
-            return 0;
-        }
-        if(!pass.VerifyTravel(SourceLocation,Destination)) {
-            return 0;
-        }
-        this->pass=&pass;
-        return 1;
-    }
-};
-*/
 
 void defualtValues(BRTS *b) {
     BusStation B1("KLE TEch",0);
@@ -673,7 +794,7 @@ void defualtValues(BRTS *b) {
     Driver D9(19,"Harshit",47,"ABRDEF1212");
 	Driver D10(10,"Kumar",42,"ABRDEF1298");
 
-	Passenger P1(1,500,"Shivan",20,B1);
+	Passenger P1(1,500,"Shivan",20,B3);
 	Passenger P2(2,1000,"Somil",20,B2);
     b->addStation(B1,C1);
     b->addStation(B2,C2);
@@ -707,7 +828,7 @@ while(1) {
     cout << "===========================" << endl;
     cout << "   Welcome to BRTS Hubli   " << endl;
     cout << "===========================" << endl;
-    cout << "1. Start BRTS Simualtion" << endl;
+    cout << "1. Start BRTS Simulation" << endl;
     cout << "2. Display Buses" << endl;
     cout << "3. Display Stations" << endl;
     cout << "4. Display All Employees" << endl;
@@ -722,45 +843,53 @@ while(1) {
     cout << "===========================" << endl;
     cout << "Enter Choice:";
     cin >> ch;
+
+    try {
     switch(ch) {
-    case 1:
-        Brts.simulatePerson();
-        break;
-    case 2:
-        Brts.printBuses();
-        break;
-    case 3:
-        Brts.printStations();
-        break;
-    case 4:
-        Brts.printEmplyee();
-        break;
-    case 5:
-        Brts.printPass();
-        break;
-    case 6:
-        Brts.addBus();
-        break;
-    case 7:
-        Brts.addStation();
-        break;
-    case 8:
-        Brts.Addpass();
-        break;
-    case 9:
-        Brts.buyBuspass();
-        break;
-    case 10:
-        defualtValues(&Brts);
-        break;
-    case 11:
-        Brts.FindFareBetweenStation();
-        break;
-    case 12:
-        exit(0);
-        break;
-    default:
-        exit(0);
+        case 1:
+            Brts.simulatePerson();
+            break;
+        case 2:
+            Brts.printBuses();
+            break;
+        case 3:
+            Brts.printStations();
+            break;
+        case 4:
+            Brts.printEmplyee();
+            break;
+        case 5:
+            Brts.printPass();
+            break;
+        case 6:
+            Brts.addBus();
+            break;
+        case 7:
+            Brts.addStation();
+            break;
+        case 8:
+            Brts.Addpass();
+            break;
+        case 9:
+            Brts.buyBuspass();
+            break;
+        case 10:
+            defualtValues(&Brts);
+            break;
+        case 11:
+            Brts.FindFareBetweenStation();
+            break;
+        case 12:
+            exit(0);
+            break;
+        default:
+            exit(0);
+        }
+    } catch(BRTSExceptions e) {
+        e.show_error_message();
+        e.show_error();
+    } catch(int e) {
+        //For Simulate Exit
     }
 }
 
