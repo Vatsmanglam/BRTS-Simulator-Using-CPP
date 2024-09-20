@@ -10,7 +10,7 @@ The BRTS (Bus Rapid Transit System) Simulator is a terminal-based application de
 - **Route Management**: Create and manage bus routes.
 - **Passenger Management**: Track passenger boarding and alighting.
 - **User Interface**: Simple terminal-based interface for user interaction.
-
+ 
 ## Requirements
 
 - C++ Compiler (e.g., g++, clang++)
