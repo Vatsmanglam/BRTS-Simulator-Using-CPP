@@ -1,6 +1,6 @@
 # BRTS Simulator Using C++
 
-## Overview
+## Overview 
 
 The BRTS (Bus Rapid Transit System) Simulator is a terminal-based application developed in C++. This project simulates the operations of a bus transit system, allowing users to manage buses, routes, and passengers efficiently.
 
